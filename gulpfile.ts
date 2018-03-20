@@ -6,7 +6,6 @@ const shell = require("gulp-shell");
 const replace = require("gulp-replace");
 const rename = require("gulp-rename");
 const file = require("gulp-file");
-const uglify = require("gulp-uglify");
 const mocha = require("gulp-mocha");
 const chai = require("chai");
 const tslint = require("gulp-tslint");
@@ -109,7 +108,6 @@ export class Gulpfile {
     @Task()
     browserUglify() {
         return gulp.src("./build/package/typeorm-browser.js")
-            .pipe(uglify())
             .pipe(rename("typeorm-browser.min.js"))
             .pipe(gulp.dest("./build/package"));
     }

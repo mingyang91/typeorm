@@ -276,9 +276,9 @@ ORDER BY table_name, i.relname
         const uniqueKeysSql  = `SELECT * FROM information_schema.table_constraints WHERE table_catalog = '${this.dbName}' AND constraint_type = 'UNIQUE'  AND table_schema = '${this.schemaName}'`;
         const primaryKeysSql = `
 SELECT
-  t.relname AS colunm_name,
-  a.attname AS table_name,
-  c.conname AS constraint_name
+  t.relname AS table_name,
+  c.conname AS constraint_name,
+  a.attname AS colunm_name
 FROM pg_constraint c
   LEFT JOIN pg_class t ON t.OID = c.conrelid
   LEFT JOIN pg_attribute a ON a.attnum = ANY(c.conkey) AND a.attrelid = t.oid
