@@ -269,6 +269,7 @@ WHERE i.oid = ix.indexrelid
       AND t.oid = ix.indrelid
       AND a.attrelid = ix.indrelid
       AND a.attnum = ANY (ix.indkey)
+      AND t.relnamespace = (SELECT OID FROM pg_namespace WHERE nspname = '${this.schemaName}')
       AND t.relname IN (${tableNamesString})
 ORDER BY table_name, i.relname;`;
         const foreignKeysSql = `SELECT table_name, constraint_name FROM information_schema.table_constraints WHERE table_catalog = '${this.dbName}' AND constraint_type = 'FOREIGN KEY' AND table_schema = '${this.schemaName}'`;
