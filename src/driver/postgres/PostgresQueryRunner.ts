@@ -259,15 +259,32 @@ export class PostgresQueryRunner implements QueryRunner {
         const tableNamesString = tableNames.map(name => "'" + name + "'").join(", ");
         const tablesSql      = `SELECT * FROM information_schema.tables WHERE table_catalog = '${this.dbName}' AND table_schema = '${this.schemaName}' AND table_name IN (${tableNamesString})`;
         const columnsSql     = `SELECT * FROM information_schema.columns WHERE table_catalog = '${this.dbName}' AND table_schema = '${this.schemaName}'`;
-        const indicesSql     = `SELECT t.relname AS table_name, i.relname AS index_name, a.attname AS column_name  FROM pg_class t, pg_class i, pg_index ix, pg_attribute a
-WHERE t.oid = ix.indrelid AND i.oid = ix.indexrelid AND a.attrelid = t.oid
-AND a.attnum = ANY(ix.indkey) AND t.relkind = 'r' AND t.relname IN (${tableNamesString}) ORDER BY t.relname, i.relname`;
-        const foreignKeysSql = `SELECT table_name, constraint_name FROM information_schema.table_constraints WHERE table_catalog = '${this.dbName}' AND constraint_type = 'FOREIGN KEY'`;
-        const uniqueKeysSql  = `SELECT * FROM information_schema.table_constraints WHERE table_catalog = '${this.dbName}' AND constraint_type = 'UNIQUE'`;
-        const primaryKeysSql = `SELECT c.column_name, tc.table_name, tc.constraint_name FROM information_schema.table_constraints tc
-JOIN information_schema.constraint_column_usage AS ccu USING (constraint_schema, constraint_name)
-JOIN information_schema.columns AS c ON c.table_schema = tc.constraint_schema AND tc.table_name = c.table_name AND ccu.column_name = c.column_name
-where constraint_type = 'PRIMARY KEY' and tc.table_catalog = '${this.dbName}'`;
+        const indicesSql     = `
+SELECT
+  t.relname   AS table_name,
+  i.relname   AS index_name,
+  a.attname   AS column_name
+FROM pg_class t, pg_class i, pg_index ix, pg_attribute a
+WHERE i.oid = ix.indexrelid
+      AND t.oid = ix.indrelid
+      AND a.attrelid = ix.indrelid
+      AND a.attnum = ANY (ix.indkey)
+      AND ix.indrelid IN (${tableNames.map(name => `'"${this.schemaName}"."${name}"'::regclass`)})
+ORDER BY table_name, i.relname
+        `;
+        const foreignKeysSql = `SELECT table_name, constraint_name FROM information_schema.table_constraints WHERE table_catalog = '${this.dbName}' AND constraint_type = 'FOREIGN KEY' AND table_schema = '${this.schemaName}'`;
+        const uniqueKeysSql  = `SELECT * FROM information_schema.table_constraints WHERE table_catalog = '${this.dbName}' AND constraint_type = 'UNIQUE'  AND table_schema = '${this.schemaName}'`;
+        const primaryKeysSql = `
+SELECT
+  t.relname AS colunm_name,
+  a.attname AS table_name,
+  c.conname AS constraint_name
+FROM pg_constraint c
+  LEFT JOIN pg_class t ON t.OID = c.conrelid
+  LEFT JOIN pg_attribute a ON a.attnum = ANY(c.conkey) AND a.attrelid = t.oid
+WHERE c.connamespace = '${this.schemaName}' :: REGNAMESPACE
+       AND contype = 'p'
+        `;
         const [dbTables, dbColumns, dbIndices, dbForeignKeys, dbUniqueKeys, primaryKeys]: ObjectLiteral[][] = await Promise.all([
             this.query(tablesSql),
             this.query(columnsSql),
